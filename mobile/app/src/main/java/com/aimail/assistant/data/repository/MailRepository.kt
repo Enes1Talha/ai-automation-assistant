@@ -3,6 +3,8 @@ package com.aimail.assistant.data.repository
 import com.aimail.assistant.data.api.MailApiService
 import com.aimail.assistant.data.model.MailDetail
 import com.aimail.assistant.data.model.MailListResponse
+import com.aimail.assistant.data.model.OrderStatsResponse
+import com.aimail.assistant.data.model.OrdersResponse
 import com.aimail.assistant.data.model.ProcessResult
 import com.aimail.assistant.data.model.StatsResponse
 import javax.inject.Inject
@@ -35,6 +37,14 @@ class MailRepository @Inject constructor(
 
     suspend fun processMails(): Result<ProcessResult> = safeCall {
         api.processMails()
+    }
+
+    suspend fun getOrders(page: Int = 1, pageSize: Int = 50): Result<OrdersResponse> = safeCall {
+        api.getOrders(page = page, pageSize = pageSize)
+    }
+
+    suspend fun getOrderStats(): Result<OrderStatsResponse> = safeCall {
+        api.getOrderStats()
     }
 
     private inline fun <T> safeCall(block: () -> T): Result<T> =

@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.aimail.assistant.ui.dashboard.DashboardScreen
 import com.aimail.assistant.ui.maildetail.MailDetailScreen
 import com.aimail.assistant.ui.maillist.MailListScreen
+import com.aimail.assistant.ui.orders.OrdersScreen
 
 sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
@@ -19,6 +20,7 @@ sealed class Screen(val route: String) {
     object MailDetail : Screen("mails/{id}") {
         fun createRoute(id: Int) = "mails/$id"
     }
+    object Orders : Screen("orders")
 }
 
 @Composable
@@ -34,7 +36,14 @@ fun AiMailNavGraph(
                 onNavigateToMailList = { category ->
                     navController.navigate(Screen.MailList.createRoute(category))
                 },
+                onNavigateToOrders = {
+                    navController.navigate(Screen.Orders.route)
+                },
             )
+        }
+
+        composable(Screen.Orders.route) {
+            OrdersScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

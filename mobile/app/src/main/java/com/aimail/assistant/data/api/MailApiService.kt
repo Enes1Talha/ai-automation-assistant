@@ -2,6 +2,8 @@ package com.aimail.assistant.data.api
 
 import com.aimail.assistant.data.model.MailDetail
 import com.aimail.assistant.data.model.MailListResponse
+import com.aimail.assistant.data.model.OrderStatsResponse
+import com.aimail.assistant.data.model.OrdersResponse
 import com.aimail.assistant.data.model.ProcessResult
 import com.aimail.assistant.data.model.StatsResponse
 import retrofit2.http.GET
@@ -25,4 +27,13 @@ interface MailApiService {
 
     @GET("process-mails")
     suspend fun processMails(): ProcessResult
+
+    @GET("orders")
+    suspend fun getOrders(
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 50,
+    ): OrdersResponse
+
+    @GET("orders/stats")
+    suspend fun getOrderStats(): OrderStatsResponse
 }

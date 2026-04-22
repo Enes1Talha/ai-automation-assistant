@@ -27,6 +27,7 @@ import com.aimail.assistant.ui.theme.*
 @Composable
 fun DashboardScreen(
     onNavigateToMailList: (String) -> Unit,
+    onNavigateToOrders: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -138,7 +139,7 @@ fun DashboardScreen(
                     CategoryBarChart(categories = uiState.byCategory, total = uiState.total)
                 }
 
-                // Process button
+                // Action buttons
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = { viewModel.processMails() },
@@ -159,6 +160,15 @@ fun DashboardScreen(
                         Spacer(Modifier.width(8.dp))
                         Text("Process New Emails", fontWeight = FontWeight.SemiBold)
                     }
+                }
+                OutlinedButton(
+                    onClick = onNavigateToOrders,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(Icons.Default.Receipt, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("View Orders", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
