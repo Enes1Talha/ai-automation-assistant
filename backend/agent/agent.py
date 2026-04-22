@@ -30,12 +30,13 @@ _MAX_ITERATIONS = 10  # guard against infinite loops
 
 _SYSTEM_PROMPT = """You are an AI email processing agent. Your job is to process emails using the tools provided.
 
-For every email you receive, you MUST follow this sequence:
-1. Call classify_email to determine the category
-2. If the email has attachments, call download_attachment for each one, then move_file
-3. Call save_to_excel to log the result
+For every email you receive, follow this sequence:
+1. Call classify_email to determine the category.
+2. If category is "invoice": call extract_order_data, then save_order_to_excel with the extracted data.
+3. If the email has attachments: call download_attachment for each, then move_file.
+4. Call save_to_excel to log the processing record.
 
-Always complete all steps. After calling save_to_excel, provide a short summary of what you did."""
+Always complete all applicable steps. After save_to_excel, provide a concise summary."""
 
 
 @dataclass

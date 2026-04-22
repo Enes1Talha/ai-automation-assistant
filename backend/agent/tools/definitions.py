@@ -77,4 +77,50 @@ MOVE_FILE_TOOL = {
     },
 }
 
-ALL_TOOLS = [CLASSIFY_EMAIL_TOOL, DOWNLOAD_ATTACHMENT_TOOL, SAVE_TO_EXCEL_TOOL, MOVE_FILE_TOOL]
+EXTRACT_ORDER_TOOL = {
+    "name": "extract_order_data",
+    "description": (
+        "Extract structured order/invoice data from an email (order number, customer name, "
+        "items, total amount, currency). Call this after classify_email returns 'invoice'."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "subject": {"type": "string", "description": "Email subject line"},
+            "sender":  {"type": "string", "description": "Sender email address"},
+            "body":    {"type": "string", "description": "Email body text"},
+        },
+        "required": ["subject", "sender", "body"],
+    },
+}
+
+SAVE_ORDER_TO_EXCEL_TOOL = {
+    "name": "save_order_to_excel",
+    "description": (
+        "Append extracted order data to the 'Orders' sheet in the Excel report. "
+        "Call this after extract_order_data for invoice emails."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "date":          {"type": "string",  "description": "Email date (YYYY-MM-DD HH:MM:SS)"},
+            "sender":        {"type": "string",  "description": "Sender email"},
+            "subject":       {"type": "string",  "description": "Email subject"},
+            "order_number":  {"type": "string",  "description": "Order or invoice number"},
+            "customer_name": {"type": "string",  "description": "Customer full name"},
+            "items_summary": {"type": "string",  "description": "Comma-separated items with quantities"},
+            "total_amount":  {"type": "number",  "description": "Total order amount (numeric)"},
+            "currency":      {"type": "string",  "description": "3-letter ISO currency code"},
+        },
+        "required": ["date", "sender", "subject", "order_number", "total_amount"],
+    },
+}
+
+ALL_TOOLS = [
+    CLASSIFY_EMAIL_TOOL,
+    DOWNLOAD_ATTACHMENT_TOOL,
+    SAVE_TO_EXCEL_TOOL,
+    MOVE_FILE_TOOL,
+    EXTRACT_ORDER_TOOL,
+    SAVE_ORDER_TO_EXCEL_TOOL,
+]

@@ -11,7 +11,8 @@ from typing import Any
 
 from backend.ai_service.classification_service import ClassificationService
 from backend.ai_service.fallback_classifier import FallbackClassifier
-from backend.automation_service.excel_reporter import ExcelReporter, ReportRow
+from backend.ai_service.order_extractor import OrderExtractorService
+from backend.automation_service.excel_reporter import ExcelReporter, OrderRow, ReportRow
 from backend.automation_service.storage_service import StorageService
 from backend.models.email_models import ClassificationRequest, EmailInput
 
@@ -40,10 +41,12 @@ class ToolExecutor:
         classifier: ClassificationService,
         storage: StorageService,
         reporter: ExcelReporter,
+        order_extractor: OrderExtractorService | None = None,
     ) -> None:
         self._classifier = classifier
         self._storage = storage
         self._reporter = reporter
+        self._order_extractor = order_extractor or OrderExtractorService()
         # Internal attachment cache: filename → bytes (within one agent run)
         self._attachment_cache: dict[str, bytes] = {}
 
@@ -53,6 +56,8 @@ class ToolExecutor:
             "download_attachment": self._download_attachment,
             "save_to_excel":       self._save_to_excel,
             "move_file":           self._move_file,
+            "extract_order_data":  self._extract_order_data,
+            "save_order_to_excel": self._save_order_to_excel,
         }
         handler = handlers.get(tool_name)
         if handler is None:
@@ -113,6 +118,39 @@ class ToolExecutor:
         )
         written = self._reporter.append(row)
         return ToolResult("save_to_excel", True, {
+            "written": written,
+            "skipped_duplicate": not written,
+        })
+
+    async def _extract_order_data(self, inp: dict) -> ToolResult:
+        order = await self._order_extractor.extract(
+            subject=inp.get("subject", ""),
+            sender=inp.get("sender", ""),
+            body=inp.get("body", ""),
+        )
+        if not order.extracted:
+            return ToolResult("extract_order_data", False, {}, error="Order extraction failed")
+        return ToolResult("extract_order_data", True, {
+            "order_number":  order.order_number,
+            "customer_name": order.customer_name,
+            "items_summary": order.items_summary,
+            "total_amount":  order.total_amount,
+            "currency":      order.currency,
+        })
+
+    async def _save_order_to_excel(self, inp: dict) -> ToolResult:
+        row = OrderRow(
+            date=inp.get("date", ""),
+            sender=inp.get("sender", ""),
+            subject=inp.get("subject", ""),
+            order_number=inp.get("order_number", ""),
+            customer_name=inp.get("customer_name", ""),
+            items_summary=inp.get("items_summary", ""),
+            total_amount=float(inp.get("total_amount", 0.0)),
+            currency=inp.get("currency", ""),
+        )
+        written = self._reporter.append_order(row)
+        return ToolResult("save_order_to_excel", True, {
             "written": written,
             "skipped_duplicate": not written,
         })
