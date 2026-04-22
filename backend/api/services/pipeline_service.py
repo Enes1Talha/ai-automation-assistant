@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from backend.mail_service.mail_service import MailService, make_mail_service
@@ -9,23 +10,25 @@ from backend.mail_service.models import ParsedEmail
 from backend.ai_service.classification_service import ClassificationService
 from backend.models.email_models import ClassificationResult, EmailInput, ClassificationRequest
 from backend.database.models import MailRecord
+from backend.automation_service.automation_service import AutomationService, make_automation_service
 
 logger = logging.getLogger(__name__)
 
 
 class PipelineService:
     """
-    Orchestrates the full pipeline:
-      fetch emails → classify → persist to DB
+    Full pipeline: fetch emails → classify → automate (save files + Excel) → persist DB.
     """
 
     def __init__(
         self,
         mail_service: MailService,
         classification_service: ClassificationService,
+        automation_service: Optional[AutomationService] = None,
     ) -> None:
         self._mail = mail_service
         self._classifier = classification_service
+        self._automation = automation_service
 
     async def run(self, db: Session) -> dict:
         errors: list[str] = []
@@ -47,13 +50,21 @@ class PipelineService:
         return {"processed": saved, "errors": errors}
 
     async def _process_one(self, email: ParsedEmail, db: Session) -> MailRecord | None:
-        # Skip already-processed emails
         existing = db.query(MailRecord).filter(MailRecord.uid == email.uid).first()
         if existing:
             logger.debug("Skipping already-processed uid=%s", email.uid)
             return None
 
         classification = await self._classify(email)
+
+        # Automation: save attachments + write Excel
+        if self._automation is not None:
+            try:
+                auto_result = self._automation.process(email, classification)
+                if auto_result.errors:
+                    logger.warning("Automation warnings for uid=%s: %s", email.uid, auto_result.errors)
+            except Exception as exc:
+                logger.error("Automation failed for uid=%s: %s", email.uid, exc)
 
         record = MailRecord(
             uid=email.uid,
@@ -75,21 +86,14 @@ class PipelineService:
         db.refresh(record)
 
         logger.info(
-            "Saved uid=%s category=%s confidence=%.2f source=%s",
-            email.uid,
-            classification.category,
-            classification.confidence,
-            classification.source,
+            "Processed uid=%s category=%s confidence=%.2f source=%s",
+            email.uid, classification.category, classification.confidence, classification.source,
         )
         return record
 
     async def _classify(self, email: ParsedEmail) -> ClassificationResult:
         request = ClassificationRequest(
-            email=EmailInput(
-                subject=email.subject,
-                sender=email.sender,
-                body=email.body,
-            )
+            email=EmailInput(subject=email.subject, sender=email.sender, body=email.body)
         )
         response = await self._classifier.classify(request)
         if not response.success or response.result is None:
@@ -110,4 +114,7 @@ def make_pipeline_service() -> PipelineService:
     classifier_svc = ClassificationService(
         confidence_threshold=float(os.environ.get("CLASSIFICATION_CONFIDENCE_THRESHOLD", "0.6")),
     )
-    return PipelineService(mail_svc, classifier_svc)
+    automation_svc = make_automation_service(
+        base_dir=os.environ.get("STORAGE_BASE_DIR", "storage"),
+    )
+    return PipelineService(mail_svc, classifier_svc, automation_svc)
