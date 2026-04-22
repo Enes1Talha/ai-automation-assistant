@@ -5,8 +5,12 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.database.database import init_db
 from backend.api.routers import mails, process, agent, orders
@@ -50,6 +54,14 @@ app.include_router(process.router)
 app.include_router(mails.router)
 app.include_router(agent.router)
 app.include_router(orders.router)
+
+_STATIC = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=_STATIC), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def dashboard() -> FileResponse:
+    return FileResponse(_STATIC / "index.html")
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

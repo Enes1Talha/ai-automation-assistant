@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Mail Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1A56DB',
+            invoice: '#0EA5E9',
+            important: '#F59E0B',
+            spam: '#EF4444',
+            other: '#6B7280',
+            ordergreen: '#065F46',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">AI Mail Assistant</h1>
+      <p class="text-sm text-gray-500">Email Intelligence Dashboard</p>
+    </div>
+    <button onclick="processEmails()" id="processBtn"
+      class="bg-primary hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition">
+      <span id="processBtnIcon">▶</span>
+      <span id="processBtnText">Process New Emails</span>
+    </button>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg"></div>
+
+    <!-- Stats Cards -->
+    <section>
+      <h2 class="text-base font-semibold text-gray-700 mb-3">Overview</h2>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-primary text-white rounded-xl p-4 col-span-2 md:col-span-1 flex flex-col justify-between min-h-[100px]">
+          <p class="text-xs text-blue-200">Total Processed</p>
+          <p id="statTotal" class="text-3xl font-bold">—</p>
+          <p class="text-xs text-blue-200">emails</p>
+        </div>
+        <div onclick="showCategory('invoice')" class="cursor-pointer bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition">
+          <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center mb-2">
+            <span class="text-invoice text-sm">🧾</span>
+          </div>
+          <p id="statInvoice" class="text-2xl font-bold text-gray-800">—</p>
+          <p class="text-xs text-gray-500 mt-1">Invoice</p>
+        </div>
+        <div onclick="showCategory('important')" class="cursor-pointer bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition">
+          <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center mb-2">
+            <span class="text-sm">⭐</span>
+          </div>
+          <p id="statImportant" class="text-2xl font-bold text-gray-800">—</p>
+          <p class="text-xs text-gray-500 mt-1">Important</p>
+        </div>
+        <div onclick="showCategory('spam')" class="cursor-pointer bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition">
+          <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mb-2">
+            <span class="text-sm">🚫</span>
+          </div>
+          <p id="statSpam" class="text-2xl font-bold text-gray-800">—</p>
+          <p class="text-xs text-gray-500 mt-1">Spam</p>
+        </div>
+        <div onclick="showCategory('other')" class="cursor-pointer bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition">
+          <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mb-2">
+            <span class="text-sm">📥</span>
+          </div>
+          <p id="statOther" class="text-2xl font-bold text-gray-800">—</p>
+          <p class="text-xs text-gray-500 mt-1">Other</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Orders Stats -->
+    <section>
+      <h2 class="text-base font-semibold text-gray-700 mb-3">Orders</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-ordergreen text-white rounded-xl p-4">
+          <p class="text-xs text-green-300">Total Revenue</p>
+          <p id="orderRevenue" class="text-3xl font-bold mt-1">—</p>
+          <p id="orderCount" class="text-xs text-green-300 mt-1">— orders</p>
+        </div>
+        <div id="currencyCards" class="col-span-2 grid grid-cols-2 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- Tabs -->
+    <section>
+      <div class="flex gap-2 mb-4">
+        <button onclick="setTab('emails')" id="tabEmails"
+          class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white">Emails</button>
+        <button onclick="setTab('orders')" id="tabOrders"
+          class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-200">Orders</button>
+      </div>
+
+      <!-- Category Filter -->
+      <div id="categoryFilter" class="flex gap-2 mb-4 flex-wrap">
+        <button onclick="filterCategory('')" class="filter-btn active px-3 py-1 rounded-full text-xs font-medium border transition">All</button>
+        <button onclick="filterCategory('invoice')" class="filter-btn px-3 py-1 rounded-full text-xs font-medium border transition">🧾 Invoice</button>
+        <button onclick="filterCategory('important')" class="filter-btn px-3 py-1 rounded-full text-xs font-medium border transition">⭐ Important</button>
+        <button onclick="filterCategory('spam')" class="filter-btn px-3 py-1 rounded-full text-xs font-medium border transition">🚫 Spam</button>
+        <button onclick="filterCategory('other')" class="filter-btn px-3 py-1 rounded-full text-xs font-medium border transition">📥 Other</button>
+      </div>
+
+      <!-- Emails Table -->
+      <div id="emailsPanel">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Subject</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Sender</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Confidence</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Date</th>
+              </tr>
+            </thead>
+            <tbody id="emailsBody" class="divide-y divide-gray-50">
+              <tr><td colspan="5" class="text-center py-8 text-gray-400">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="emailsPagination" class="flex items-center justify-between mt-4 text-sm text-gray-500"></div>
+      </div>
+
+      <!-- Orders Table -->
+      <div id="ordersPanel" class="hidden">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order #</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Customer</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Items</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Date</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody" class="divide-y divide-gray-50">
+              <tr><td colspan="5" class="text-center py-8 text-gray-400">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+<script>
+const API = '';
+let currentCategory = '';
+let currentPage = 1;
+const PAGE_SIZE = 20;
+
+const CATEGORY_COLORS = {
+  invoice:   'bg-sky-100 text-sky-700',
+  important: 'bg-amber-100 text-amber-700',
+  spam:      'bg-red-100 text-red-700',
+  other:     'bg-gray-100 text-gray-600',
+};
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([loadStats(), loadOrderStats(), loadEmails()]);
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const data = await get('/mails/stats');
+    document.getElementById('statTotal').textContent = data.total;
+    const bycat = {};
+    data.by_category.forEach(c => bycat[c.category] = c.count);
+    document.getElementById('statInvoice').textContent   = bycat.invoice   ?? 0;
+    document.getElementById('statImportant').textContent = bycat.important ?? 0;
+    document.getElementById('statSpam').textContent      = bycat.spam      ?? 0;
+    document.getElementById('statOther').textContent     = bycat.other     ?? 0;
+  } catch(e) { showToast('Could not load stats', 'error'); }
+}
+
+async function loadOrderStats() {
+  try {
+    const data = await get('/orders/stats');
+    document.getElementById('orderRevenue').textContent = formatMoney(data.total_revenue);
+    document.getElementById('orderCount').textContent   = `${data.total_orders} orders`;
+    const cc = document.getElementById('currencyCards');
+    cc.innerHTML = data.by_currency.length
+      ? data.by_currency.map(c => `
+          <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+            <p class="text-xs text-gray-500">${c.currency}</p>
+            <p class="text-xl font-bold text-gray-800 mt-1">${formatMoney(c.total)}</p>
+            <p class="text-xs text-gray-400 mt-1">${c.count} orders</p>
+          </div>`).join('')
+      : '<div class="col-span-2 flex items-center text-gray-400 text-sm">No orders yet — process invoice emails first.</div>';
+  } catch(e) {}
+}
+
+// ── Emails ────────────────────────────────────────────────────────────────────
+async function loadEmails(page = 1) {
+  currentPage = page;
+  const params = new URLSearchParams({ page, page_size: PAGE_SIZE });
+  if (currentCategory) params.set('category', currentCategory);
+  try {
+    const data = await get('/mails?' + params);
+    const tbody = document.getElementById('emailsBody');
+    if (!data.items.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">No emails found.</td></tr>';
+    } else {
+      tbody.innerHTML = data.items.map(m => `
+        <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openMailDetail(${m.id})">
+          <td class="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">${esc(m.subject)}</td>
+          <td class="px-4 py-3 text-gray-500 hidden md:table-cell max-w-xs truncate">${esc(m.sender)}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[m.category] || 'bg-gray-100 text-gray-600'}">
+              ${m.category}
+            </span>
+          </td>
+          <td class="px-4 py-3 hidden md:table-cell">
+            <div class="flex items-center gap-2">
+              <div class="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-primary rounded-full" style="width:${Math.round(m.confidence*100)}%"></div>
+              </div>
+              <span class="text-xs text-gray-500">${Math.round(m.confidence*100)}%</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-gray-400 text-xs hidden lg:table-cell">${(m.email_date||m.processed_at||'').slice(0,10)}</td>
+        </tr>`).join('');
+    }
+    renderPagination(data.total, page);
+  } catch(e) {
+    document.getElementById('emailsBody').innerHTML =
+      '<tr><td colspan="5" class="text-center py-8 text-red-400">Failed to load emails.</td></tr>';
+  }
+}
+
+function renderPagination(total, page) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const el = document.getElementById('emailsPagination');
+  if (pages <= 1) { el.innerHTML = `<span>${total} emails</span>`; return; }
+  el.innerHTML = `
+    <span>${total} emails · page ${page} of ${pages}</span>
+    <div class="flex gap-2">
+      <button onclick="loadEmails(${page-1})" ${page<=1?'disabled':''} class="px-3 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">← Prev</button>
+      <button onclick="loadEmails(${page+1})" ${page>=pages?'disabled':''} class="px-3 py-1 rounded border text-xs disabled:opacity-40 hover:bg-gray-100">Next →</button>
+    </div>`;
+}
+
+// ── Orders ────────────────────────────────────────────────────────────────────
+async function loadOrders() {
+  try {
+    const data = await get('/orders?page_size=50');
+    const tbody = document.getElementById('ordersBody');
+    if (!data.items.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-gray-400">No orders yet.</td></tr>';
+    } else {
+      tbody.innerHTML = data.items.map(o => `
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-emerald-700">${esc(o.order_number) || '—'}</td>
+          <td class="px-4 py-3 text-gray-600 hidden md:table-cell">${esc(o.customer_name) || '—'}</td>
+          <td class="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell max-w-xs truncate">${esc(o.items_summary) || '—'}</td>
+          <td class="px-4 py-3 font-semibold text-gray-800">${o.currency} ${o.total_amount.toFixed(2)}</td>
+          <td class="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">${(o.date||'').slice(0,10)}</td>
+        </tr>`).join('');
+    }
+  } catch(e) {
+    document.getElementById('ordersBody').innerHTML =
+      '<tr><td colspan="5" class="text-center py-8 text-red-400">Failed to load orders.</td></tr>';
+  }
+}
+
+// ── Mail Detail Modal ─────────────────────────────────────────────────────────
+async function openMailDetail(id) {
+  try {
+    const m = await get(`/mails/${id}`);
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+        <div class="flex justify-between items-start">
+          <h3 class="font-bold text-gray-800 text-lg pr-4">${esc(m.subject)}</h3>
+          <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+        <div class="text-sm text-gray-500 space-y-1">
+          <p><span class="font-medium text-gray-700">From:</span> ${esc(m.sender)}</p>
+          <p><span class="font-medium text-gray-700">Date:</span> ${m.email_date || '—'}</p>
+          <p><span class="font-medium text-gray-700">Category:</span>
+            <span class="ml-1 px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[m.category] || 'bg-gray-100'}">${m.category}</span>
+          </p>
+          <p><span class="font-medium text-gray-700">Confidence:</span> ${Math.round(m.confidence*100)}%</p>
+          <p><span class="font-medium text-gray-700">Source:</span> ${m.classification_source}</p>
+          ${m.classification_reason ? `<p><span class="font-medium text-gray-700">Reason:</span> ${esc(m.classification_reason)}</p>` : ''}
+          ${m.has_attachments ? `<p><span class="font-medium text-gray-700">Attachments:</span> ${m.attachment_count}</p>` : ''}
+        </div>
+        ${m.body_preview ? `<div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 max-h-40 overflow-y-auto">${esc(m.body_preview)}</div>` : ''}
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  } catch(e) { showToast('Could not load email details', 'error'); }
+}
+
+// ── Process ───────────────────────────────────────────────────────────────────
+async function processEmails() {
+  const btn = document.getElementById('processBtn');
+  const icon = document.getElementById('processBtnIcon');
+  const text = document.getElementById('processBtnText');
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  text.textContent = 'Processing...';
+  try {
+    const data = await get('/process-mails');
+    showToast(`Done! Processed: ${data.processed} emails`, 'success');
+    await Promise.all([loadStats(), loadOrderStats(), loadEmails()]);
+  } catch(e) {
+    showToast('Processing failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '▶';
+    text.textContent = 'Process New Emails';
+  }
+}
+
+// ── Filters & Tabs ────────────────────────────────────────────────────────────
+function filterCategory(cat) {
+  currentCategory = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim().toLowerCase().includes(cat) || (cat === '' && b.textContent.trim() === 'All'));
+    b.classList.toggle('bg-primary', b.classList.contains('active'));
+    b.classList.toggle('text-white', b.classList.contains('active'));
+    b.classList.toggle('border-primary', b.classList.contains('active'));
+    b.classList.toggle('bg-white', !b.classList.contains('active'));
+    b.classList.toggle('text-gray-600', !b.classList.contains('active'));
+  });
+  loadEmails(1);
+}
+
+function showCategory(cat) { setTab('emails'); filterCategory(cat); }
+
+function setTab(tab) {
+  const isEmails = tab === 'emails';
+  document.getElementById('emailsPanel').classList.toggle('hidden', !isEmails);
+  document.getElementById('ordersPanel').classList.toggle('hidden', isEmails);
+  document.getElementById('categoryFilter').classList.toggle('hidden', !isEmails);
+  document.getElementById('tabEmails').className = `tab-btn px-4 py-2 rounded-lg text-sm font-medium ${isEmails ? 'bg-primary text-white' : 'bg-white text-gray-600 border border-gray-200'}`;
+  document.getElementById('tabOrders').className = `tab-btn px-4 py-2 rounded-lg text-sm font-medium ${!isEmails ? 'bg-primary text-white' : 'bg-white text-gray-600 border border-gray-200'}`;
+  if (!isEmails) loadOrders();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+async function get(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(r.statusText);
+  return r.json();
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatMoney(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toFixed(2);
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-medium shadow-lg ${type === 'error' ? 'bg-red-500' : 'bg-emerald-600'}`;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
