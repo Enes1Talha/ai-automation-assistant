@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database.database import init_db
-from backend.api.routers import mails, process
+from backend.api.routers import mails, process, agent
 from backend.api.schemas.mail_schema import HealthResponse
 from backend.api.services.pipeline_service import make_pipeline_service
 from backend.api.dependencies import set_pipeline
@@ -48,6 +48,7 @@ app.add_middleware(
 
 app.include_router(process.router)
 app.include_router(mails.router)
+app.include_router(agent.router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
